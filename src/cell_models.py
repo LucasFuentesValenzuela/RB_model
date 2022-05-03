@@ -12,16 +12,24 @@ class cell_v1(object):
     Version 1 of the model
     """
 
-    def __init__(self, alpha=1, beta0=1, delta=1, gamma=1, epsilon=.2, RB_thresh=3e-1, dt=1e-3):
+    def __init__(
+            self, alpha=2, beta0=3, delta=1, 
+            gamma=.9, epsilon=.01, RB_thresh=1.1, dt=1e-3, 
+            division="concentration"
+        ):
         """
         Initialize a cell
         """
         self.M = 1
-        self.RB = 1  # amount
+        self.RB = 2  # amount
         self.phase = "G1"
-        # self.M_division = 2*self.M
-        self.RB_division = self.RB/self.M # concentration
-        self.RB_transition = RB_thresh # in concentration
+        self.division = division
+
+        if division=="concentration":
+            self.RB_division = self.RB/self.M  # concentration
+        elif division=="amount":
+            self.RB_division = self.RB
+        self.RB_transition = RB_thresh  # in concentration
 
         # parameters
         self.params = {
@@ -33,13 +41,17 @@ class cell_v1(object):
             "dt": dt,
         }
 
+        self.check_params()
+
+
         self.init_hists()
+        return
 
     def RB_c(self):
         return self.RB/self.M
 
     def divide(self):
-        self.M = self.M/2 
+        self.M = self.M/2
         self.RB = self.RB/2
         self.phase = "G1"
         return
@@ -63,15 +75,12 @@ class cell_v1(object):
             - division
             """
 
-            # if self.phase=="G1":
-            #     return
-            # else:
-            #     return
-
             M_tmp = self.M + \
                 self.params["dt"] * self.params["gamma"] * \
                 (self.M)**self.params["delta"]
-            if self.RB_c() > self.RB_division:
+            if (self.division=="concentration") and (self.RB_c() > self.RB_division):
+                self.divide()
+            elif (self.division=="amount") and (self.RB > self.RB_division):
                 self.divide()
             else:
                 self.M = M_tmp
@@ -125,3 +134,21 @@ class cell_v1(object):
         self.RB_c_hist.append(self.RB_c())
         self.phase_hist.append(self.phase)
         return
+
+    def check_params(self):
+        """
+        """
+
+        alpha, beta0, epsilon = self.params['alpha'], self.params['beta0'], self.params['epsilon']
+
+        if self.division=="concentration":
+            if any([
+                not (alpha/beta0/epsilon > self.RB_division),
+                not (self.RB_division > self.RB_transition),
+                not (self.RB_transition > alpha/beta0)
+            ]):
+                print("Parameters invalid")
+                return
+
+        elif self.division=="amount":
+            return
