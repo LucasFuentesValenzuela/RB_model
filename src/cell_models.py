@@ -15,8 +15,8 @@ class cell_v1(object):
     def __init__(
             self, alpha=2, beta0=3, delta=1, 
             gamma=.9, epsilon=.01, dt=1e-3, 
-            division="timer", transition="size", 
-            time_SG2 = 1e-1, transition_th=1.
+            time_SG2 = 1e-1, transition_th=1.,
+            division="timer", transition="size"
         ):
         """
         Initialize a cell
@@ -26,6 +26,8 @@ class cell_v1(object):
         self.phase = "G1"
         self.division = division
         self.transition = transition
+        self.dt = dt
+        self.time_SG2=0
 
         if division=="concentration":
             self.division_th = self.RB/self.M  # concentration
@@ -62,11 +64,24 @@ class cell_v1(object):
         return
 
     def transit(self):
+        """
+        """
+
         self.phase = "G2"
         self.time_SG2 = 0
         return
 
-    def grow(self):
+    def grow(self, T):
+        """
+        """
+
+        for _ in range(T):
+            self.step()
+
+        return
+
+
+    def step(self):
         """
         Propagate one step forward
         """
@@ -81,12 +96,12 @@ class cell_v1(object):
             - division
             """
 
-            M_tmp = self.M + \
+            self.M = self.M + \
                 self.params["dt"] * self.params["gamma"] * \
                 (self.M)**self.params["delta"]
 
             if self.phase=="G2":
-                self.time_SG2 += self.dt
+                self.time_SG2 = self.time_SG2 + self.dt
 
                 if (self.division=="concentration") and (self.RB_c() > self.division_th):
                     self.divide()
@@ -94,8 +109,6 @@ class cell_v1(object):
                     self.divide()
                 elif (self.division=="timer") and (self.time_SG2 > self.division_th):
                     self.divide()
-                else:
-                    self.M = M_tmp
             return
 
         def step_concentrations(self):
@@ -112,9 +125,9 @@ class cell_v1(object):
             self.RB = self.RB + self.params['dt'] * \
                 (self.params['alpha']*self.M - beta*self.RB)
 
-            if (self.transition=="RBc") and (self.RB_c() < self.transition_th):
+            if (self.transition=="RBc") and (self.RB_c() < self.transition_th) and self.phase=="G1":
                 self.transit()
-            elif (self.transition=="size") and (self.M < self.transition_th):
+            elif (self.transition=="size") and (self.M > self.transition_th) and self.phase=="G1":
                 self.transit()
 
             return
@@ -175,4 +188,5 @@ class cell_v1(object):
                 print(f"alpha/beta0 = {alpha/beta0}")
                 return
         else:
-            print("Params check not implemented")
+            # print("Params check not implemented")
+            pass
