@@ -1,14 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from src.analysis import get_acfs, is_periodic
+from src.cell_models import cell_v1
 
 
-def plot_vars_vs_time(ax, cell):
+def plot_vars_vs_time(ax, cell, normalize=1.):
     """
     """
-    ax.plot(np.array(cell.M_hist)/cell.M_hist[0], label="M")
-    ax.plot(np.array(cell.RB_hist)/cell.RB_hist[0], label="RB")
-    ax.plot(np.array(cell.RB_c_hist)/cell.RB_c_hist[0], label="[RB]")
+    ax.plot(np.array(cell.M_hist)/cell.M_hist[-1], label="M")
+    ax.plot(np.array(cell.RB_hist)/cell.RB_hist[-1], '--', label="RB")
+    ax.plot(np.array(cell.RB_c_hist)/cell.RB_c_hist[-1], label="[RB]")
 
     
     phase_vec = np.array(cell.phase_hist)=="G1"
@@ -39,7 +40,7 @@ def plot_phase_RB(ax, cell):
     Phase space plot
     """
     phase_vec = np.array(cell.phase_hist)=="G1"
-    # ax.plot(cell.M_hist, cell.RB_hist, alpha=.5)
+
     ax.scatter(
         np.array(cell.M_hist)[phase_vec==True], 
         np.array(cell.RB_hist)[phase_vec==True], 
@@ -50,18 +51,24 @@ def plot_phase_RB(ax, cell):
         np.array(cell.RB_hist)[phase_vec==False], 
         alpha=.3, s=1, label="G2"
     )
-#     ax.axhline(cell.RB_division, color='red')
-#     m_vec = np.linspace(0, 2)
-#     ax.plot(m_vec, m_vec*cell.RB_transition, color='red')
+
     ax.set_xlabel("M")
     ax.set_ylabel("RB amount")
     ax.grid()
     ax.legend()
 
+    pc_points = .5
+    npoints=int(pc_points * len(cell.RB_hist))
+    ymin = .9 * np.min(np.array(cell.RB_hist)[npoints:-1])
+    ymax = 1.1 * np.max(np.array(cell.RB_hist)[npoints:-1])
+    ax.set_ylim([ymin, ymax])
+
     if cell.division=="timer":
         pass # no line for a timer
     if cell.transition=="size":
         ax.axvline(cell.transition_th, color="red")
+
+    return
 
 def plot_phase_RBc(ax, cell):
     """
@@ -77,6 +84,13 @@ def plot_phase_RBc(ax, cell):
         np.array(cell.RB_c_hist)[phase_vec==False], 
         alpha=.3, s=1, label="G2"
     )
+
+    pc_points = .5
+    npoints=int(pc_points * len(cell.RB_c_hist))
+    ymin = .9 * np.min(np.array(cell.RB_c_hist)[npoints:-1])
+    ymax = 1.1 * np.max(np.array(cell.RB_c_hist)[npoints:-1])
+    ax.set_ylim([ymin, ymax])
+
     ax.grid()
     ax.set_xlabel("M")
     ax.set_ylabel("[RB]")
@@ -108,3 +122,40 @@ def plot_autocorrelations(ax, cell, nlags=4000, prominence=.1):
     ax.set_ylabel("ACF")
     ax.legend()
     return periods
+
+def run_and_plot_test(
+    alpha=2, beta0=3, delta=1, 
+    gamma=.9, epsilon=.01, dt=.1, 
+    division="timer", transition="size", 
+    time_SG2=1e-1, transition_th=2., T=300
+):
+    """
+    Run a model and gets the relevant plots out
+    """
+    
+    cell = cell_v1(
+        alpha=alpha, beta0=beta0, delta=delta, 
+        gamma=gamma, epsilon=epsilon, dt=dt, 
+        division=division, transition=transition, 
+        time_SG2=time_SG2, transition_th=transition_th
+    )
+
+    cell.grow(T)
+    
+    _, ax = plt.subplots(2, 2, figsize=(15, 10))
+    # t_vec = np.arange(T+1)
+
+    plot_vars_vs_time(ax[0,0], cell, normalize=transition_th)
+    plot_phase_RB(ax[1,0], cell)
+    plot_phase_RBc(ax[1,1], cell)
+    
+    periods = plot_autocorrelations(ax[0,1], cell, nlags=T/2, prominence=0)
+    if any([p is None for p in periods]):
+        print("Not periodic")
+    else:
+        if np.std(periods)/np.mean(periods) < .05:
+            print(f"All signals with period approx. {np.mean(periods)}.")
+        else:
+            print("Not periodic")
+    
+    return cell, periods

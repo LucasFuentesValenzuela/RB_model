@@ -22,6 +22,7 @@ class cell_v1(object):
         Initialize a cell
         """
         self.M = 1
+        self.M_birth = self.M
         self.RB = 2  # amount
         self.phase = "G1"
         self.division = division
@@ -36,7 +37,11 @@ class cell_v1(object):
         elif division=="timer":
             self.division_th = time_SG2
 
-        self.transition_th = transition_th  # in concentration or size
+        if transition=="size": # here we assume the size is controlled as a multiple of birth
+            self.transition_th = transition_th * self.M_birth  # in concentration or size
+        else:
+            print("Transition other than size needs implementation")
+            return
 
         # parameters
         self.params = {
