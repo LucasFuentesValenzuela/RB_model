@@ -7,17 +7,17 @@ import numpy as np
 # do that, and extract the data that you need from it.
 
 
-class cell_v1(object):
+class cell(object):
     """
     Version 1 of the model
     """
 
     def __init__(
-            self, alpha=2, beta0=3, delta=1, 
-            gamma=.9, epsilon=.01, dt=1e-3, 
-            time_SG2 = 1e-1, transition_th=1.,
-            division="timer", transition="size"
-        ):
+        self, alpha=2, beta0=3, delta=1,
+        gamma=.9, epsilon=.02, dt=1e-3,
+        time_SG2=1e-1, transition_th=1.,
+        division="timer", transition="size"
+    ):
         """
         Initialize a cell
         """
@@ -28,16 +28,16 @@ class cell_v1(object):
         self.division = division
         self.transition = transition
         self.dt = dt
-        self.time_SG2=0
+        self.time_SG2 = 0
 
-        if division=="concentration":
+        if division == "concentration":
             self.division_th = self.RB/self.M  # concentration
-        elif division=="amount":
+        elif division == "amount":
             self.division_th = self.RB
-        elif division=="timer":
+        elif division == "timer":
             self.division_th = time_SG2
 
-        if transition=="size": # here we assume the size is controlled as a multiple of birth
+        if transition == "size":  # here we assume the size is controlled as a multiple of birth
             self.transition_th = transition_th * self.M_birth  # in concentration or size
         else:
             print("Transition other than size needs implementation")
@@ -54,9 +54,8 @@ class cell_v1(object):
         }
 
         self.check_params()
-
-
         self.init_hists()
+
         return
 
     def RB_c(self):
@@ -85,7 +84,6 @@ class cell_v1(object):
 
         return
 
-
     def step(self):
         """
         Propagate one step forward
@@ -105,14 +103,14 @@ class cell_v1(object):
                 self.params["dt"] * self.params["gamma"] * \
                 (self.M)**self.params["delta"]
 
-            if self.phase=="G2":
+            if self.phase == "G2":
                 self.time_SG2 = self.time_SG2 + self.dt
 
-                if (self.division=="concentration") and (self.RB_c() > self.division_th):
+                if (self.division == "concentration") and (self.RB_c() > self.division_th):
                     self.divide()
-                elif (self.division=="amount") and (self.RB > self.division_th):
+                elif (self.division == "amount") and (self.RB > self.division_th):
                     self.divide()
-                elif (self.division=="timer") and (self.time_SG2 > self.division_th):
+                elif (self.division == "timer") and (self.time_SG2 > self.division_th):
                     self.divide()
             return
 
@@ -130,9 +128,9 @@ class cell_v1(object):
             self.RB = self.RB + self.params['dt'] * \
                 (self.params['alpha']*self.M - beta*self.RB)
 
-            if (self.transition=="RBc") and (self.RB_c() < self.transition_th) and self.phase=="G1":
+            if (self.transition == "RBc") and (self.RB_c() < self.transition_th) and self.phase == "G1":
                 self.transit()
-            elif (self.transition=="size") and (self.M > self.transition_th) and self.phase=="G1":
+            elif (self.transition == "size") and (self.M > self.transition_th) and self.phase == "G1":
                 self.transit()
 
             return
@@ -173,7 +171,7 @@ class cell_v1(object):
 
         alpha, beta0, epsilon = self.params['alpha'], self.params['beta0'], self.params['epsilon']
 
-        if self.division=="concentration" and self.transition=="RBc":
+        if self.division == "concentration" and self.transition == "RBc":
             if any([
                 not (alpha/beta0/epsilon > self.division_th),
                 not (self.division_th > self.transition_th),
@@ -182,9 +180,9 @@ class cell_v1(object):
                 print("Parameters invalid")
                 return
 
-        elif self.division=="amount" and self.transition=="RBc":
+        elif self.division == "amount" and self.transition == "RBc":
             if any([
-                not (alpha/beta0/epsilon > self.RB_transition), 
+                not (alpha/beta0/epsilon > self.RB_transition),
                 not(self.RB_transition > alpha/beta0)
             ]):
                 print("Parameters invalid")
