@@ -1,22 +1,73 @@
+from decimal import DefaultContext
 from tkinter import W
 import numpy as np
+import pandas as pd
 
-# TODO: work out what the phase space would/should be for something like this
-# you have only a few parameters, and you can probably compare a few of them
-# to each other, right?
-# do that, and extract the data that you need from it.
+DEFAULT_PARAMS = {
+    'alpha': 2,
+    'beta0': 0.09,
+    'delta': 1.,
+    'gamma': 0.03,
+    'epsilon': .2,
+    'dt': 1e-1,
+    'duration_SG2': 12, # hr
+    'transition_th': 1.,
+    'k_trans': 5, 
+    'division': "timer",
+    'transition': "size"
+}
+
+
+class population(object):
+    """
+    Population of cells.
+    """
+
+    def __init__(
+        self, N_cells, params=DEFAULT_PARAMS
+    ):
+        """
+        Initialize a population of cells
+        """
+        self.cells = [cell(params=params) for _ in range(N_cells)]
+        self.params = params
+        self.N_cells = N_cells
+
+    def grow(self, T):
+        """
+        Grow the population for T timesteps.
+        """
+
+        for cell in self.cells:
+            cell.grow(T)
+
+        return
+
+    def gather_results(self):
+        """
+        Consolidate the time series for every cell.
+        """
+        empty_df = pd.DataFrame(columns = [k for k in range(self.N_cells)])
+        M_df, RB_df, RBc_df, phase_df = empty_df.copy(), empty_df.copy(), empty_df.copy(), empty_df.copy()
+
+        for k, cell in enumerate(self.cells): 
+
+            M_df[k] = cell.M_hist
+            RB_df[k] = cell.RB_hist
+            RBc_df[k] = cell.RB_c_hist
+            phase_df[k] = cell.phase_hist
+
+        return {"M": M_df, "RB": RB_df, "RBc": RBc_df, "phase": phase_df}
 
 
 class cell(object):
     """
-    Version 1 of the model
+    Representation of a cell as a dynamical system.
     """
 
     def __init__(
-        self, alpha=2, beta0=3, delta=1,
-        gamma=.9, epsilon=.02, dt=1e-3,
-        time_SG2=1e-1, transition_th=1.,
-        division="timer", transition="size"
+        self,
+        params=DEFAULT_PARAMS, 
     ):
         """
         Initialize a cell
@@ -25,34 +76,27 @@ class cell(object):
         self.M_birth = self.M
         self.RB = 2  # amount
         self.phase = "G1"
-        self.division = division
-        self.transition = transition
-        self.dt = dt
         self.time_SG2 = 0
 
-        if division == "concentration":
-            self.division_th = self.RB/self.M  # concentration
-        elif division == "amount":
-            self.division_th = self.RB
-        elif division == "timer":
-            self.division_th = time_SG2
+        self.division = params["division"]
+        self.transition = params["transition"]
+        self.dt = params["dt"]
 
-        if transition == "size":  # here we assume the size is controlled as a multiple of birth
-            self.transition_th = transition_th * self.M_birth  # in concentration or size
+        if self.division == "concentration":
+            self.division_th = self.RB/self.M  # concentration
+        elif self.division == "amount":
+            self.division_th = self.RB
+        elif self.division == "timer":
+            self.division_th = params["duration_SG2"]
+
+        if self.transition == "size":  # here we assume the size is controlled as a multiple of birth
+            self.transition_th = params["transition_th"] * self.M_birth  # in concentration or size
         else:
             print("Transition other than size needs implementation")
             return
 
         # parameters
-        self.params = {
-            "alpha": alpha,
-            "beta0": beta0,
-            "delta": delta,
-            "gamma": gamma,
-            "epsilon": epsilon,
-            "dt": dt,
-        }
-
+        self.params = params
         self.check_params()
         self.init_hists()
 
@@ -127,16 +171,27 @@ class cell(object):
 
             self.RB = self.RB + self.params['dt'] * \
                 (self.params['alpha']*self.M - beta*self.RB)
+            return
 
-            if (self.transition == "RBc") and (self.RB_c() < self.transition_th) and self.phase == "G1":
-                self.transit()
-            elif (self.transition == "size") and (self.M > self.transition_th) and self.phase == "G1":
-                self.transit()
+        def check_transit(self):
+            """
+            """
+            if (self.transition == "RBc") and (self.phase == "G1"):
+                transition_probability = np.maximum(self.transition_th -  self.Rb_c(), 0) * self.params["k_trans"]
+            elif (self.transition == "size") and (self.phase == "G1"):
+                transition_probability = np.maximum(
+                    (self.M - self.transition_th)/self.transition_th, 0
+                    ) * self.params["k_trans"] * self.params["dt"]
+            else:
+                transition_probability = 0
 
+            if np.random.binomial(1, np.minimum(transition_probability, 1)): 
+                self.transit()
             return
 
         step_size(self)
         step_concentrations(self)
+        check_transit(self)
         self.update_hists()
 
     def beta(self):
