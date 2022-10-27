@@ -157,19 +157,27 @@ def run_and_plot_test(
     alpha=2, beta0=3, delta=1,
     gamma=.9, epsilon=.01, dt=.1,
     division="timer", transition="size",
-    time_SG2=1e-1, transition_th=2., T=300
+    time_SG2=1e-1, transition_th=2., k_trans=5, T=300
 ):
     """
     Run a model and gets the relevant plots out
     """
 
-    cell = cell_models.cell(
-        alpha=alpha, beta0=beta0, delta=delta,
-        gamma=gamma, epsilon=epsilon, dt=dt,
-        division=division, transition=transition,
-        time_SG2=time_SG2, transition_th=transition_th
-    )
+    params = {
+    'alpha': alpha,
+    'beta0': beta0,
+    'delta': delta,
+    'gamma': gamma,
+    'epsilon': epsilon,
+    'dt': dt,
+    'duration_SG2': time_SG2, # hr
+    'transition_th': transition_th,
+    'k_trans': k_trans, 
+    'division': division,
+    'transition': transition
+}
 
+    cell = cell_models.cell(params=params)
     cell.grow(T)
 
     _, ax = plt.subplots(3, 2, figsize=(15, 10))

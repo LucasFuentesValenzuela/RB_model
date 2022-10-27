@@ -17,6 +17,10 @@ DEFAULT_PARAMS = {
     'transition': "size"
 }
 
+# division asymmetry
+M_div = (.5, .0)
+RB_div = (.5, .0)
+
 
 class population(object):
     """
@@ -91,9 +95,8 @@ class cell(object):
 
         if self.transition == "size":  # here we assume the size is controlled as a multiple of birth
             self.transition_th = params["transition_th"] * self.M_birth  # in concentration or size
-        else:
-            print("Transition other than size needs implementation")
-            return
+        elif self.transition == "RBc":
+            self.transition_th = params["transition_th"] * self.RB/self.M_birth
 
         # parameters
         self.params = params
@@ -106,8 +109,10 @@ class cell(object):
         return self.RB/self.M
 
     def divide(self):
-        self.M = self.M/2
-        self.RB = self.RB/2
+
+        #asymmetric division
+        self.M = self.M * np.random.uniform(M_div[0]-M_div[1], M_div[0]+M_div[1])
+        self.RB = self.RB * np.random.uniform(RB_div[0]-RB_div[1], RB_div[0]+RB_div[1])
         self.phase = "G1"
         return
 
@@ -173,21 +178,16 @@ class cell(object):
                 (self.params['alpha']*self.M - beta*self.RB)
             return
 
+
+
         def check_transit(self):
             """
             """
-            if (self.transition == "RBc") and (self.phase == "G1"):
-                transition_probability = np.maximum(self.transition_th -  self.Rb_c(), 0) * self.params["k_trans"]
-            elif (self.transition == "size") and (self.phase == "G1"):
-                transition_probability = np.maximum(
-                    (self.M - self.transition_th)/self.transition_th, 0
-                    ) * self.params["k_trans"] * self.params["dt"]
-            else:
-                transition_probability = 0
-
+            transition_probability = self.compute_transition_probability()
             if np.random.binomial(1, np.minimum(transition_probability, 1)): 
                 self.transit()
             return
+
 
         step_size(self)
         step_concentrations(self)
@@ -248,3 +248,16 @@ class cell(object):
         else:
             # print("Params check not implemented")
             pass
+
+    def compute_transition_probability(self):
+        """
+        """
+        if (self.transition == "RBc") and (self.phase == "G1"):
+            transition_probability = np.maximum(self.transition_th -  self.RB_c(), 0) * self.params["k_trans"] * self.params["dt"]
+        elif (self.transition == "size") and (self.phase == "G1"):
+            transition_probability = np.maximum(
+                (self.M - self.transition_th)/self.transition_th, 0
+                ) * self.params["k_trans"] * self.params["dt"]
+        else:
+            transition_probability = 0
+        return transition_probability
