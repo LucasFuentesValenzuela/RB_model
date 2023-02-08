@@ -133,6 +133,9 @@ def get_phase_durations(cell):
     G1_growth, G2_growth = [], []
     G1_length, G2_length = [], []
     G1_mean_RB, G2_Delta_RB = [], []
+    M_births = []
+    RB_birth, RB_division = [], []
+    RBc_birth, RBc_division = [], []
 
     phase_duration = np.zeros(len(phase_vec))
     k = 0
@@ -148,6 +151,11 @@ def get_phase_durations(cell):
             G1_growth.append(cell.M_hist[k+next_switch-1]/cell.M_hist[k])
             G1_length.append(next_switch*cell.dt)
             G1_mean_RB.append(np.mean(cell.RB_hist[k:k+next_switch]))
+            M_births.append(cell.M_hist[k])
+            RB_birth.append(cell.RB_hist[k])
+            RB_division.append(cell.RB_hist[k+next_switch-1])
+            RBc_birth.append(cell.RB_c_hist[k])
+            RBc_division.append(cell.RB_c_hist[k+next_switch-1])
 
         elif phase_vec[k] == 0: # G2
             phase_duration[k:k+next_switch] = np.linspace(0, next_switch-1, next_switch)
@@ -158,9 +166,12 @@ def get_phase_durations(cell):
         k = k+next_switch
 
         stats = {
+            'birth': M_births,
             'growth': (G1_growth, G2_growth), 
             'length': (G1_length, G2_length), 
-            'RB': (G1_mean_RB, G2_Delta_RB)
+            'RB': (G1_mean_RB, G2_Delta_RB), 
+            'RB_G1': (RB_birth, RB_division), 
+            'RBc_G1': (RBc_birth, RBc_division)
         }
         
     return phase_duration * cell.dt, stats
