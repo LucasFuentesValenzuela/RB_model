@@ -17,6 +17,11 @@ DEFAULT_PARAMS = {
     'transition': "size"
 }
 
+INIT_COND = {
+    "RB": 2, 
+    "M": 1
+}
+
 # division asymmetry
 M_div = (.5, .0)
 RB_div = (.5, .0)
@@ -28,12 +33,14 @@ class population(object):
     """
 
     def __init__(
-        self, N_cells, params=DEFAULT_PARAMS
+        self, N_cells, 
+        params=DEFAULT_PARAMS, 
+        init_cond=INIT_COND
     ):
         """
         Initialize a population of cells
         """
-        self.cells = [cell(params=params) for _ in range(N_cells)]
+        self.cells = [cell(params=params, init_cond=init_cond) for _ in range(N_cells)]
         self.params = params
         self.N_cells = N_cells
 
@@ -72,13 +79,19 @@ class cell(object):
     def __init__(
         self,
         params=DEFAULT_PARAMS, 
+        init_cond=INIT_COND
     ):
         """
         Initialize a cell
         """
-        self.M = 1
+        # initial conditions
+        self.M = init_cond["M"]
+        if params['transition'] == 'RBc':
+            self.RB = init_cond["M"] * (params['transition_th']) * 1.2
+        else:
+            self.RB = init_cond["RB"]
+
         self.M_birth = self.M
-        self.RB = 2  # amount
         self.phase = "G1"
         self.time_SG2 = 0
 
@@ -93,10 +106,12 @@ class cell(object):
         elif self.division == "timer":
             self.division_th = params["duration_SG2"]
 
-        if self.transition == "size":  # here we assume the size is controlled as a multiple of birth
-            self.transition_th = params["transition_th"] * self.M_birth  # in concentration or size
-        elif self.transition == "RBc":
-            self.transition_th = params["transition_th"] * self.RB/self.M_birth
+        # if self.transition == "size":  # here we assume the size is controlled as a multiple of birth
+        #     self.transition_th = params["transition_th"] * self.M_birth  # in concentration or size
+        # elif self.transition == "RBc":
+        #     self.transition_th = params["transition_th"] * self.RB/self.M_birth
+
+        self.transition_th = params["transition_th"]
 
         # parameters
         self.params = params
@@ -175,7 +190,7 @@ class cell(object):
             beta = self.beta()
 
             self.RB = self.RB + self.params['dt'] * \
-                (self.params['alpha']*self.M - beta*self.RB)
+                (self.params['alpha']*self.M**self.params['delta'] - beta*self.RB)
             return
 
 
@@ -222,6 +237,8 @@ class cell(object):
 
     def check_params(self):
         """
+        Note: rewrite this function with the right conditions. I don't quite remember
+        how these conditions were established
         """
 
         alpha, beta0, epsilon = self.params['alpha'], self.params['beta0'], self.params['epsilon']
@@ -260,4 +277,37 @@ class cell(object):
                 ) * self.params["k_trans"] * self.params["dt"]
         else:
             transition_probability = 0
+            
         return transition_probability
+
+def check_conditions(params):
+    """
+    Check whether parameters satisfy certain conditions for cycling. 
+    """
+    alpha = params['alpha']
+    beta = params['beta0']
+    gamma = params['gamma']
+    epsilon = params['epsilon']
+    tau = params['duration_SG2']
+    # transition_th = params['transition_th']
+
+    if params['transition'] == 'RBc':
+
+        # condition one
+        # assert (1-epsilon) * beta < (beta/gamma + 1) * np.log(2)
+
+        #condition 2
+        C1 = alpha/(beta+gamma)
+        C2 = alpha/(epsilon*beta+gamma)
+        num = C1 + np.exp((beta+gamma)*tau)/(2**(beta/gamma+1)) * (C2 * np.exp(-tau*(epsilon*beta+gamma)) + C2 - C1)
+        deno = 1 - np.exp((1-epsilon)*beta)/(2**(beta/gamma+1))
+
+        return num/deno
+
+    else: 
+        print("not implemented for this transition")
+
+    return
+
+
+

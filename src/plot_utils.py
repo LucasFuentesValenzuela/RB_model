@@ -56,7 +56,7 @@ def plot_vars_vs_time(ax, cell, collapse_time=False):
 
         ax.set_yscale('log')
         ax.legend(loc="upper left")
-        ax.grid()
+        # ax.grid()
         ax.set_xlabel("Time")
         ax.set_ylabel("Variables")
 
