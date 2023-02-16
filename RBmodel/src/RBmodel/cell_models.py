@@ -215,7 +215,7 @@ class cell(object):
             Update amounts/concentrations of RB and pRB
             """
 
-            alpha = self.alpha
+            alpha = self.alpha()
             beta = self.beta()
 
             self.RB = self.RB + self.params['dt'] * \
