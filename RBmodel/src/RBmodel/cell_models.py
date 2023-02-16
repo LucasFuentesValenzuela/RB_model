@@ -12,12 +12,14 @@ DEFAULT_PARAMS = {
     'delta': 1.,  # exponent of growth
     'gamma': 0.03,  # growth rate
     'epsilon': .2,  # ratio of degradation rate in G2 vs G1
+    'eta': 1., # ratio of synthesis rate in G2 vs G1
     'dt': 1e-1,  # time step
     'duration_SG2': 12,  # Duration of SG2 phase, in hr
     'transition_th': 1.,  # Threshold for transition into G1/S (RBc or M)
     'k_trans': 5,  # Rate of transition into G1/S after passing threshold
     'division': "timer",  # Mechanism of regulation of division (timer, sizer)
-    'transition': "size"  # Mechanism of regulation of transition (size, RBc)
+    'transition': "size",  # Mechanism of regulation of transition (size, RBc)
+    'max_cycles': 1e5 # Max number of cycles before cell cycle exit
 }
 
 # Initial conditions for simulations
@@ -142,7 +144,6 @@ class cell(object):
         self.params = params
         self.check_params()
         self.init_hists()
-
         return
 
     def RB_c(self):
@@ -160,6 +161,7 @@ class cell(object):
         self.RB = self.RB * \
             np.random.uniform(RB_div[0]-RB_div[1], RB_div[0]+RB_div[1])
         self.phase = "G1"
+        self.cycle_nb += 1
         return
 
     def transit(self):
@@ -213,11 +215,12 @@ class cell(object):
             Update amounts/concentrations of RB and pRB
             """
 
+            alpha = self.alpha()
             beta = self.beta()
 
             self.RB = self.RB + self.params['dt'] * \
-                (self.params['alpha']*self.M **
-                 self.params['delta'] - beta*self.RB)
+                (alpha*self.M **
+                 self.params['delta'] - beta * self.RB)
             return
 
         def check_transit(self):
@@ -233,6 +236,15 @@ class cell(object):
         step_concentrations(self)  # update concentrations
         check_transit(self)  # transit if need be
         self.update_hists()
+
+    def alpha(self):
+        """
+        Compute synthesis rate as a function of the phase
+        """
+        if self.phase == "G1":
+            return self.params["alpha"]
+        elif self.phase == "G2":
+            return self.params["alpha"] * self.params["eta"]
 
     def beta(self):
         """
@@ -251,6 +263,7 @@ class cell(object):
         self.RB_hist = [self.RB]
         self.RB_c_hist = [self.RB_c()]
         self.phase_hist = [self.phase]
+        self.cycle_nb = 1
         return
 
     def update_hists(self):
@@ -299,12 +312,12 @@ class cell(object):
         """
         Compute probability of cell transition to S/G2
         """
-        if (self.transition == "RBc") and (self.phase == "G1"):
+        if (self.transition == "RBc") and (self.phase == "G1") and (self.cycle_nb < self.params['max_cycles']):
 
             transition_probability = np.maximum(
                 self.transition_th - self.RB_c(), 0) * self.params["k_trans"] * self.params["dt"]
 
-        elif (self.transition == "size") and (self.phase == "G1"):
+        elif (self.transition == "size") and (self.phase == "G1") and (self.cycle_nb < self.params['max_cycles']):
 
             transition_probability = np.maximum(
                 (self.M - self.transition_th)/self.transition_th, 0

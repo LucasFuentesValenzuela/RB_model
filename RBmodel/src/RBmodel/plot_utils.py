@@ -24,18 +24,21 @@ def plot_vars_vs_time(ax, cell, collapse_time=False):
 
     # normalize all the variables to last value
     data_norm = pd.DataFrame(columns=["M", "RB", "[RB]"])
-    data_norm ["M"] = np.array(cell.M_hist)/cell.M_hist[-1]
+    data_norm["M"] = np.array(cell.M_hist)/cell.M_hist[-1]
     data_norm["RB"] = np.array(cell.RB_hist)/cell.RB_hist[-1]
     data_norm["[RB]"] = np.array(cell.RB_c_hist)/cell.RB_c_hist[-1]
 
     phase_durations, _ = analysis.get_phase_durations(cell)
 
     if collapse_time:
-        ms=1
+        ms = 1
         alpha = .3
-        ax.scatter(phase_durations, data_norm["M"], label="M", s=ms, alpha=alpha)
-        ax.scatter(phase_durations, data_norm["RB"], label="RB", s=ms, alpha=alpha)
-        ax.scatter(phase_durations, data_norm["[RB]"], label="[RB]", s=ms, alpha=alpha)
+        ax.scatter(phase_durations,
+                   data_norm["M"], label="M", s=ms, alpha=alpha)
+        ax.scatter(phase_durations,
+                   data_norm["RB"], label="RB", s=ms, alpha=alpha)
+        ax.scatter(phase_durations,
+                   data_norm["[RB]"], label="[RB]", s=ms, alpha=alpha)
 
         ax.axvline(0, color="red")
         ax.grid()
@@ -69,7 +72,8 @@ def plot_vars_vs_time(ax, cell, collapse_time=False):
         ax.legend(loc="upper left")
         ax.set_xlabel("Time")
         ax.set_ylabel("Variables")
-        ax.set_ylim([data_norm.quantile(0.1).min()*0.8, data_norm.quantile(0.9).max()*1.5])
+        ax.set_ylim([data_norm.quantile(0.1).min()*0.8,
+                     data_norm.quantile(0.9).max()*1.5])
         return
 
 
@@ -84,10 +88,10 @@ def plot_phase_space(ax, cell, yvar, x='M'):
     cell: cell_models.cell
         cell object with some history
     """
-    if yvar=="RB":
+    if yvar == "RB":
         yvals = cell.RB_hist
         ylabel = "RB"
-    elif yvar=="RBc":
+    elif yvar == "RBc":
         yvals = cell.RB_c_hist
         ylabel = "RBc"
 
@@ -121,6 +125,7 @@ def plot_phase_space(ax, cell, yvar, x='M'):
         ax.axvline(cell.transition_th, color="red")
 
     return
+
 
 def plot_autocorrelations(ax, cell, nlags=4000, prominence=.1):
     """
@@ -156,27 +161,29 @@ def plot_autocorrelations(ax, cell, nlags=4000, prominence=.1):
 
 def run_and_plot_test(
     alpha=2, beta0=3, delta=1,
-    gamma=.9, epsilon=.01, dt=.1,
-    division="timer", transition="size",
-    time_SG2=1e-1, transition_th=2., k_trans=5, T=300
+    gamma=.9, epsilon=.01, eta=1, dt=.1, transition_th=2.,
+    k_trans=5, division="timer", transition="size",
+    time_SG2=1e-1, max_cycles=1e5, T=300,
 ):
     """
     Run a model and gets the relevant plots out
     """
 
     params = {
-    'alpha': alpha,
-    'beta0': beta0,
-    'delta': delta,
-    'gamma': gamma,
-    'epsilon': epsilon,
-    'dt': dt,
-    'duration_SG2': time_SG2, # hr
-    'transition_th': transition_th,
-    'k_trans': k_trans, 
-    'division': division,
-    'transition': transition
-}
+        'alpha': alpha,
+        'beta0': beta0,
+        'delta': delta,
+        'gamma': gamma,
+        'epsilon': epsilon,
+        'eta': eta,
+        'dt': dt,
+        'duration_SG2': time_SG2,  # hr
+        'transition_th': transition_th,
+        'k_trans': k_trans,
+        'division': division,
+        'transition': transition,
+        'max_cycles': max_cycles,
+    }
 
     cell = cell_models.cell(params=params)
     cell.grow(T)
@@ -196,7 +203,7 @@ def run_and_plot_test(
         else:
             print("Not periodic")
 
-    plot_vars_vs_time(ax[2,0], cell, collapse_time=True)
+    plot_vars_vs_time(ax[2, 0], cell, collapse_time=True)
     plot_stats(ax[2, 1], cell)
 
     return cell, periods
@@ -246,6 +253,7 @@ def plot_data(df, G1_th=10):
         ax[i, j].legend()
 
     return
+
 
 def plot_stats(ax, cell):
     """
