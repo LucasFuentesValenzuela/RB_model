@@ -3,21 +3,32 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from itertools import product
 
-from src.analysis import get_acfs, is_periodic
-from src import cell_models
-from src import load_utils
+from RBmodel.analysis import get_acfs, is_periodic
+from RBmodel import cell_models
+from RBmodel import analysis
 
 
 def plot_vars_vs_time(ax, cell, collapse_time=False):
     """
+    Plot the relevant variables vs time.
+
+    Parameters:
+    ----------
+    ax: plotting axis
+        current axis on which to plot
+    cell: cell_models.cell
+        cell object with some history
+    collapse_time: bool
+        whether or not to plot along the cell cycle phase instead of time
     """
 
+    # normalize all the variables to last value
     data_norm = pd.DataFrame(columns=["M", "RB", "[RB]"])
     data_norm ["M"] = np.array(cell.M_hist)/cell.M_hist[-1]
     data_norm["RB"] = np.array(cell.RB_hist)/cell.RB_hist[-1]
     data_norm["[RB]"] = np.array(cell.RB_c_hist)/cell.RB_c_hist[-1]
 
-    phase_durations, _ = load_utils.get_phase_durations(cell)
+    phase_durations, _ = analysis.get_phase_durations(cell)
 
     if collapse_time:
         ms=1
@@ -56,39 +67,52 @@ def plot_vars_vs_time(ax, cell, collapse_time=False):
 
         ax.set_yscale('log')
         ax.legend(loc="upper left")
-        # ax.grid()
         ax.set_xlabel("Time")
         ax.set_ylabel("Variables")
-
         ax.set_ylim([data_norm.quantile(0.1).min()*0.8, data_norm.quantile(0.9).max()*1.5])
+        return
 
 
-def plot_phase_RB(ax, cell):
+def plot_phase_space(ax, cell, yvar, x='M'):
     """
-    Phase space plot
+    Plot phase space between M and RB amount
+
+    Parameters:
+    ----------
+    ax: plotting axis
+        current axis on which to plot
+    cell: cell_models.cell
+        cell object with some history
     """
+    if yvar=="RB":
+        yvals = cell.RB_hist
+        ylabel = "RB"
+    elif yvar=="RBc":
+        yvals = cell.RB_c_hist
+        ylabel = "RBc"
+
     phase_vec = np.array(cell.phase_hist) == "G1"
 
     ax.scatter(
         np.array(cell.M_hist)[phase_vec == True],
-        np.array(cell.RB_hist)[phase_vec == True],
+        np.array(yvals)[phase_vec == True],
         alpha=.3, s=1, label="G1"
     )
     ax.scatter(
         np.array(cell.M_hist)[phase_vec == False],
-        np.array(cell.RB_hist)[phase_vec == False],
+        np.array(yvals)[phase_vec == False],
         alpha=.3, s=1, label="G2"
     )
 
     ax.set_xlabel("M")
-    ax.set_ylabel("RB amount")
+    ax.set_ylabel(ylabel)
     ax.grid()
     ax.legend()
 
     pc_points = .5
-    npoints = int(pc_points * len(cell.RB_hist))
-    ymin = .9 * np.min(np.array(cell.RB_hist)[npoints:-1])
-    ymax = 1.1 * np.max(np.array(cell.RB_hist)[npoints:-1])
+    npoints = int(pc_points * len(yvals))
+    ymin = .9 * np.min(np.array(yvals)[npoints:-1])
+    ymax = 1.1 * np.max(np.array(yvals)[npoints:-1])
     ax.set_ylim([ymin, ymax])
 
     if cell.division == "timer":
@@ -97,44 +121,21 @@ def plot_phase_RB(ax, cell):
         ax.axvline(cell.transition_th, color="red")
 
     return
-
-
-def plot_phase_RBc(ax, cell):
-    """
-    """
-    phase_vec = np.array(cell.phase_hist) == "G1"
-    ax.scatter(
-        np.array(cell.M_hist)[phase_vec == True],
-        np.array(cell.RB_c_hist)[phase_vec == True],
-        alpha=.3, s=1, label="G1"
-    )
-    ax.scatter(
-        np.array(cell.M_hist)[phase_vec == False],
-        np.array(cell.RB_c_hist)[phase_vec == False],
-        alpha=.3, s=1, label="G2"
-    )
-
-    pc_points = .5
-    npoints = int(pc_points * len(cell.RB_c_hist))
-    ymin = .9 * np.min(np.array(cell.RB_c_hist)[npoints:-1])
-    ymax = 1.1 * np.max(np.array(cell.RB_c_hist)[npoints:-1])
-    ax.set_ylim([ymin, ymax])
-
-    ax.grid()
-    ax.set_xlabel("M")
-    ax.set_ylabel("[RB]")
-    ax.legend()
-
-    if cell.division == "timer":
-        pass  # no line for a timer
-    if cell.transition == "size":
-        ax.axvline(cell.transition_th, color="red")
-
-    return
-
 
 def plot_autocorrelations(ax, cell, nlags=4000, prominence=.1):
     """
+    Plot the autocorrelation of the different signals.
+
+    Parameters:
+    ----------
+    ax: plotting axis
+        axis on which to plot
+    cell: cell_models.cell
+        cell object with some history
+    nlags: int
+        lags to take into account for ACF computation
+    prominence: float
+        required prominence of peaks
     """
 
     (acf_RB, acf_M, acf_RBc) = get_acfs(cell, nlags)
@@ -181,11 +182,10 @@ def run_and_plot_test(
     cell.grow(T)
 
     _, ax = plt.subplots(3, 2, figsize=(15, 10))
-    # t_vec = np.arange(T+1)
 
     plot_vars_vs_time(ax[0, 0], cell, collapse_time=False)
-    plot_phase_RB(ax[1, 0], cell)
-    plot_phase_RBc(ax[1, 1], cell)
+    plot_phase_space(ax[1, 0], cell, yvar="RB")
+    plot_phase_space(ax[1, 1], cell, yvar="RBc")
 
     periods = plot_autocorrelations(ax[0, 1], cell, nlags=T/2, prominence=0)
     if any([p is None for p in periods]):
@@ -205,6 +205,13 @@ def run_and_plot_test(
 def plot_data(df, G1_th=10):
     """
     Plots the experimental data from .csv or .xlsx files
+
+    Parameters:
+    ----------
+    df: DataFrame
+        DataFrame of interest, created from data files
+    G1_th: int
+        minimum G1 duration to consider
     """
 
     _, ax = plt.subplots(3, 3, figsize=(15, 10))
@@ -242,10 +249,18 @@ def plot_data(df, G1_th=10):
 
 def plot_stats(ax, cell):
     """
+    Plot the stats of the cell cycle.
+
+    Parameters:
+    ----------
+    ax: plotting axis
+        axis on which to plot
+    cell: cell_models.cell
+        cell object with some history
     """
 
-    _, stats = load_utils.get_phase_durations(cell)
-    mean_stats = load_utils.get_mean_stats(stats)
+    _, stats = analysis.get_phase_durations(cell)
+    mean_stats = analysis.get_mean_stats(stats)
 
     xx = list(mean_stats.keys())
     yy = list(mean_stats.values())
