@@ -3,26 +3,31 @@ from tkinter import W
 import numpy as np
 import pandas as pd
 
+"""
+Default parameters
+"""
 DEFAULT_PARAMS = {
-    'alpha': 2,
-    'beta0': 0.09,
-    'delta': 1.,
-    'gamma': 0.03,
-    'epsilon': .2,
-    'dt': 1e-1,
-    'duration_SG2': 12, # hr
-    'transition_th': 1.,
-    'k_trans': 5, 
-    'division': "timer",
-    'transition': "size"
+    'alpha': 2, # synthesis rate
+    'beta0': 0.09, # degradation rate in G1
+    'delta': 1., # exponent of growth
+    'gamma': 0.03, # growth rate
+    'epsilon': .2, # ratio of degradation rate in G2 vs G1
+    'dt': 1e-1, # time step
+    'duration_SG2': 12,  # Duration of SG2 phase, in hr
+    'transition_th': 1., # Threshold for transition into G1/S (RBc or M)
+    'k_trans': 5, # Rate of transition into G1/S after passing threshold
+    'division': "timer", # Mechanism of regulation of division (timer, sizer)
+    'transition': "size" # Mechanism of regulation of transition (size, RBc)
 }
 
+# Initial conditions for simulations
 INIT_COND = {
-    "RB": 2, 
+    "RB": 2,
     "M": 1
 }
 
-# division asymmetry
+# Division for mass and RB amount
+# Format: (mean, std)
 M_div = (.5, .0)
 RB_div = (.5, .0)
 
@@ -33,35 +38,51 @@ class population(object):
     """
 
     def __init__(
-        self, N_cells, 
-        params=DEFAULT_PARAMS, 
+        self, N_cells,
+        params=DEFAULT_PARAMS,
         init_cond=INIT_COND
     ):
         """
         Initialize a population of cells
+
+        Parameters:
+        ----------
+        N_cells: int
+            Number of cells in the population
+        params: dict
+            dict containing parameters for the simulation
+        init_cond: dict
+            dict containing initial RB amount and mass
         """
-        self.cells = [cell(params=params, init_cond=init_cond) for _ in range(N_cells)]
+        self.cells = [cell(params=params, init_cond=init_cond)
+                      for _ in range(N_cells)]
         self.params = params
         self.N_cells = N_cells
 
     def grow(self, T):
         """
         Grow the population for T timesteps.
-        """
 
+        Parameters:
+        ----------
+        T: int
+            number of timesteps for the simulation
+        """
         for cell in self.cells:
             cell.grow(T)
-
         return
 
     def gather_results(self):
         """
         Consolidate the time series for every cell.
-        """
-        empty_df = pd.DataFrame(columns = [k for k in range(self.N_cells)])
-        M_df, RB_df, RBc_df, phase_df = empty_df.copy(), empty_df.copy(), empty_df.copy(), empty_df.copy()
 
-        for k, cell in enumerate(self.cells): 
+        Returns dict with DataFrames for M, RB, RBC, and phase. 
+        """
+        empty_df = pd.DataFrame(columns=[k for k in range(self.N_cells)])
+        M_df, RB_df, RBc_df, phase_df = empty_df.copy(
+        ), empty_df.copy(), empty_df.copy(), empty_df.copy()
+
+        for k, cell in enumerate(self.cells):
 
             M_df[k] = cell.M_hist
             RB_df[k] = cell.RB_hist
@@ -78,16 +99,24 @@ class cell(object):
 
     def __init__(
         self,
-        params=DEFAULT_PARAMS, 
+        params=DEFAULT_PARAMS,
         init_cond=INIT_COND
     ):
         """
         Initialize a cell
+
+        Parameters:
+        ----------
+        params: dict
+            dict containing parameters for the simulation
+        init_cond: dict
+            dict containing initial condition for RB amount and M
         """
+
         # initial conditions
         self.M = init_cond["M"]
         if params['transition'] == 'RBc':
-            self.RB = init_cond["M"] * (params['transition_th']) * 1.2
+            self.RB = init_cond["M"] * (params['transition_th']) * 1.2 # multiply by >1 to make sure it will transition
         else:
             self.RB = init_cond["RB"]
 
@@ -106,11 +135,6 @@ class cell(object):
         elif self.division == "timer":
             self.division_th = params["duration_SG2"]
 
-        # if self.transition == "size":  # here we assume the size is controlled as a multiple of birth
-        #     self.transition_th = params["transition_th"] * self.M_birth  # in concentration or size
-        # elif self.transition == "RBc":
-        #     self.transition_th = params["transition_th"] * self.RB/self.M_birth
-
         self.transition_th = params["transition_th"]
 
         # parameters
@@ -121,36 +145,41 @@ class cell(object):
         return
 
     def RB_c(self):
+        """Computes RB concentration at current time."""
         return self.RB/self.M
 
     def divide(self):
+        """
+        Performs cell division.
+        """
 
-        #asymmetric division
-        self.M = self.M * np.random.uniform(M_div[0]-M_div[1], M_div[0]+M_div[1])
-        self.RB = self.RB * np.random.uniform(RB_div[0]-RB_div[1], RB_div[0]+RB_div[1])
+        # asymmetric division
+        self.M = self.M * \
+            np.random.uniform(M_div[0]-M_div[1], M_div[0]+M_div[1])
+        self.RB = self.RB * \
+            np.random.uniform(RB_div[0]-RB_div[1], RB_div[0]+RB_div[1])
         self.phase = "G1"
         return
 
     def transit(self):
         """
+        Transit to SG2
         """
-
         self.phase = "G2"
         self.time_SG2 = 0
         return
 
     def grow(self, T):
         """
+        Grow the cell for T timesteps
         """
-
         for _ in range(T):
             self.step()
-
         return
 
     def step(self):
         """
-        Propagate one step forward
+        Propagate one step forward.
         """
 
         def step_size(self):
@@ -190,19 +219,17 @@ class cell(object):
             beta = self.beta()
 
             self.RB = self.RB + self.params['dt'] * \
-                (self.params['alpha']*self.M**self.params['delta'] - beta*self.RB)
+                (self.params['alpha']*self.M **
+                 self.params['delta'] - beta*self.RB)
             return
-
-
 
         def check_transit(self):
             """
             """
             transition_probability = self.compute_transition_probability()
-            if np.random.binomial(1, np.minimum(transition_probability, 1)): 
+            if np.random.binomial(1, np.minimum(transition_probability, 1)):
                 self.transit()
             return
-
 
         step_size(self)
         step_concentrations(self)
@@ -270,15 +297,17 @@ class cell(object):
         """
         """
         if (self.transition == "RBc") and (self.phase == "G1"):
-            transition_probability = np.maximum(self.transition_th -  self.RB_c(), 0) * self.params["k_trans"] * self.params["dt"]
+            transition_probability = np.maximum(
+                self.transition_th - self.RB_c(), 0) * self.params["k_trans"] * self.params["dt"]
         elif (self.transition == "size") and (self.phase == "G1"):
             transition_probability = np.maximum(
                 (self.M - self.transition_th)/self.transition_th, 0
-                ) * self.params["k_trans"] * self.params["dt"]
+            ) * self.params["k_trans"] * self.params["dt"]
         else:
             transition_probability = 0
-            
+
         return transition_probability
+
 
 def check_conditions(params):
     """
@@ -296,18 +325,16 @@ def check_conditions(params):
         # condition one
         # assert (1-epsilon) * beta < (beta/gamma + 1) * np.log(2)
 
-        #condition 2
+        # condition 2
         C1 = alpha/(beta+gamma)
         C2 = alpha/(epsilon*beta+gamma)
-        num = C1 + np.exp((beta+gamma)*tau)/(2**(beta/gamma+1)) * (C2 * np.exp(-tau*(epsilon*beta+gamma)) + C2 - C1)
+        num = C1 + np.exp((beta+gamma)*tau)/(2**(beta/gamma+1)) * \
+            (C2 * np.exp(-tau*(epsilon*beta+gamma)) + C2 - C1)
         deno = 1 - np.exp((1-epsilon)*beta)/(2**(beta/gamma+1))
 
         return num/deno
 
-    else: 
+    else:
         print("not implemented for this transition")
 
     return
-
-
-
