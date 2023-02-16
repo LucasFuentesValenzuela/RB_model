@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from itertools import product
 
-from src.analysis import get_acfs, is_periodic
-from src import cell_models
-from src import load_utils
+from RBmodel.analysis import get_acfs, is_periodic
+from RBmodel import cell_models
+from RBmodel import load_utils
 
 
 def plot_vars_vs_time(ax, cell, collapse_time=False):
