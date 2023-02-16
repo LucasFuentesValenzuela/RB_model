@@ -122,41 +122,6 @@ def plot_phase_space(ax, cell, yvar, x='M'):
 
     return
 
-
-# def plot_phase_RBc(ax, cell):
-#     """
-#     """
-#     phase_vec = np.array(cell.phase_hist) == "G1"
-#     ax.scatter(
-#         np.array(cell.M_hist)[phase_vec == True],
-#         np.array(cell.RB_c_hist)[phase_vec == True],
-#         alpha=.3, s=1, label="G1"
-#     )
-#     ax.scatter(
-#         np.array(cell.M_hist)[phase_vec == False],
-#         np.array(cell.RB_c_hist)[phase_vec == False],
-#         alpha=.3, s=1, label="G2"
-#     )
-
-#     pc_points = .5
-#     npoints = int(pc_points * len(cell.RB_c_hist))
-#     ymin = .9 * np.min(np.array(cell.RB_c_hist)[npoints:-1])
-#     ymax = 1.1 * np.max(np.array(cell.RB_c_hist)[npoints:-1])
-#     ax.set_ylim([ymin, ymax])
-
-#     ax.grid()
-#     ax.set_xlabel("M")
-#     ax.set_ylabel("[RB]")
-#     ax.legend()
-
-#     if cell.division == "timer":
-#         pass  # no line for a timer
-#     if cell.transition == "size":
-#         ax.axvline(cell.transition_th, color="red")
-
-#     return
-
-
 def plot_autocorrelations(ax, cell, nlags=4000, prominence=.1):
     """
     Plot the autocorrelation of the different signals.
