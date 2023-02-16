@@ -7,17 +7,17 @@ import pandas as pd
 Default parameters
 """
 DEFAULT_PARAMS = {
-    'alpha': 2, # synthesis rate
-    'beta0': 0.09, # degradation rate in G1
-    'delta': 1., # exponent of growth
-    'gamma': 0.03, # growth rate
-    'epsilon': .2, # ratio of degradation rate in G2 vs G1
-    'dt': 1e-1, # time step
+    'alpha': 2,  # synthesis rate
+    'beta0': 0.09,  # degradation rate in G1
+    'delta': 1.,  # exponent of growth
+    'gamma': 0.03,  # growth rate
+    'epsilon': .2,  # ratio of degradation rate in G2 vs G1
+    'dt': 1e-1,  # time step
     'duration_SG2': 12,  # Duration of SG2 phase, in hr
-    'transition_th': 1., # Threshold for transition into G1/S (RBc or M)
-    'k_trans': 5, # Rate of transition into G1/S after passing threshold
-    'division': "timer", # Mechanism of regulation of division (timer, sizer)
-    'transition': "size" # Mechanism of regulation of transition (size, RBc)
+    'transition_th': 1.,  # Threshold for transition into G1/S (RBc or M)
+    'k_trans': 5,  # Rate of transition into G1/S after passing threshold
+    'division': "timer",  # Mechanism of regulation of division (timer, sizer)
+    'transition': "size"  # Mechanism of regulation of transition (size, RBc)
 }
 
 # Initial conditions for simulations
@@ -116,7 +116,8 @@ class cell(object):
         # initial conditions
         self.M = init_cond["M"]
         if params['transition'] == 'RBc':
-            self.RB = init_cond["M"] * (params['transition_th']) * 1.2 # multiply by >1 to make sure it will transition
+            # multiply by >1 to make sure it will transition
+            self.RB = init_cond["M"] * (params['transition_th']) * 1.2
         else:
             self.RB = init_cond["RB"]
 
@@ -210,10 +211,6 @@ class cell(object):
         def step_concentrations(self):
             """
             Update amounts/concentrations of RB and pRB
-
-            Main processes: 
-            - synthesis of RB
-            - degradation of RB at different rates
             """
 
             beta = self.beta()
@@ -225,19 +222,21 @@ class cell(object):
 
         def check_transit(self):
             """
+            Check if the cell needs to transit to G2/S
             """
             transition_probability = self.compute_transition_probability()
             if np.random.binomial(1, np.minimum(transition_probability, 1)):
                 self.transit()
             return
 
-        step_size(self)
-        step_concentrations(self)
-        check_transit(self)
+        step_size(self)  # update size
+        step_concentrations(self)  # update concentrations
+        check_transit(self)  # transit if need be
         self.update_hists()
 
     def beta(self):
         """
+        Compute degradation rate as a function of the phase
         """
         if self.phase == "G1":
             return self.params["beta0"]
@@ -246,6 +245,7 @@ class cell(object):
 
     def init_hists(self):
         """
+        Initialize histories of main parameters.
         """
         self.M_hist = [self.M]
         self.RB_hist = [self.RB]
@@ -255,6 +255,7 @@ class cell(object):
 
     def update_hists(self):
         """
+        Add current time step values to histories.
         """
         self.M_hist.append(self.M)
         self.RB_hist.append(self.RB)
@@ -264,8 +265,9 @@ class cell(object):
 
     def check_params(self):
         """
-        Note: rewrite this function with the right conditions. I don't quite remember
-        how these conditions were established
+        Check the validity of parameters
+
+        TODO: verify derivations and add explanations.
         """
 
         alpha, beta0, epsilon = self.params['alpha'], self.params['beta0'], self.params['epsilon']
@@ -295,14 +297,19 @@ class cell(object):
 
     def compute_transition_probability(self):
         """
+        Compute probability of cell transition to S/G2
         """
         if (self.transition == "RBc") and (self.phase == "G1"):
+
             transition_probability = np.maximum(
                 self.transition_th - self.RB_c(), 0) * self.params["k_trans"] * self.params["dt"]
+
         elif (self.transition == "size") and (self.phase == "G1"):
+
             transition_probability = np.maximum(
                 (self.M - self.transition_th)/self.transition_th, 0
             ) * self.params["k_trans"] * self.params["dt"]
+
         else:
             transition_probability = 0
 
@@ -312,20 +319,17 @@ class cell(object):
 def check_conditions(params):
     """
     Check whether parameters satisfy certain conditions for cycling. 
+
+    TODO: check derivations, add explanations
     """
     alpha = params['alpha']
     beta = params['beta0']
     gamma = params['gamma']
     epsilon = params['epsilon']
     tau = params['duration_SG2']
-    # transition_th = params['transition_th']
 
     if params['transition'] == 'RBc':
 
-        # condition one
-        # assert (1-epsilon) * beta < (beta/gamma + 1) * np.log(2)
-
-        # condition 2
         C1 = alpha/(beta+gamma)
         C2 = alpha/(epsilon*beta+gamma)
         num = C1 + np.exp((beta+gamma)*tau)/(2**(beta/gamma+1)) * \
