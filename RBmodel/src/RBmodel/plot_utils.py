@@ -88,7 +88,7 @@ def plot_phase_space(ax, cell, yvar, x='M'):
         yvals = cell.RB_hist
         ylabel = "RB"
     elif yvar=="RBc":
-        yvals = cell.RBc_hist
+        yvals = cell.RB_c_hist
         ylabel = "RBc"
 
     phase_vec = np.array(cell.phase_hist) == "G1"
