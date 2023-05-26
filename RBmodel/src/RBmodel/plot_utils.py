@@ -276,3 +276,54 @@ def plot_stats(ax, cell):
     ax.grid()
 
     return
+
+def plot_size_control(cell, ax=None):
+    """
+    Series of plot to illustrate how the cell does size control
+    """
+    if ax is None:
+        _, ax = plt.subplots(2, 3, figsize=(10, 8))
+
+    color = 'gray'
+    s = 2
+    _, stats = analysis.get_phase_durations(cell)
+
+    ax[0,0].scatter(stats['birth'], stats['growth'][0], color=color, s=s)
+    ax[0,1].scatter(stats['birth'], stats['length'][0], color=color, s=s)
+    ax[0,2].scatter(
+        stats['birth'], stats['delta'][0],
+        color=color, 
+        s=s
+    )
+    ax[1,0].scatter(stats['birth'], stats['RB_G1'][0], color=color, s=s)
+    ax[1,1].scatter(stats['birth'], stats['RB_G1'][1], color=color, s=s)
+    ax[1,2].scatter(stats['birth'], stats['RBc_G1'][0], color=color, s=s)
+
+
+    ax[0, 0].grid()
+    ax[0, 0].set_xlabel("M at birth")
+    ax[0, 0].set_ylabel("M_G1S/M_birth")
+
+    ax[0, 1].grid()
+    ax[0, 1].set_xlabel("M at birth")
+    ax[0, 1].set_ylabel("G1 Length")
+
+    ax[0, 2].grid()
+    ax[0, 2].set_xlabel("M at birth")
+    ax[0, 2].set_ylabel("M_G1S - M_birth")
+
+    ax[1, 0].grid()
+    ax[1, 0].set_xlabel("M at birth")
+    ax[1, 0].set_ylabel("RB amount at birth")
+
+    ax[1, 1].grid()
+    ax[1, 1].set_xlabel("M at birth")
+    ax[1, 1].set_ylabel("RB amount at division")
+
+    ax[1, 2].grid()
+    ax[1, 2].set_xlabel("M at birth")
+    ax[1, 2].set_ylabel("RB concentration at birth")
+
+    plt.tight_layout()
+
+    return

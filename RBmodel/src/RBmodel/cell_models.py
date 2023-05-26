@@ -74,6 +74,19 @@ class population(object):
             cell.grow(T)
         return
 
+    def burn_in(self, T):
+        """
+        Grow the population for T timesteps, and then reinitialize the history.
+
+        Parameters:
+        ----------
+        T: int
+            number of timesteps for the simulation
+        """
+        for cell in self.cells:
+            cell.burn_in(T)
+        return
+
     def gather_results(self):
         """
         Consolidate the time series for every cell.
@@ -178,6 +191,14 @@ class cell(object):
         """
         for _ in range(T):
             self.step()
+        return
+
+    def burn_in(self, T):
+        """
+        Grow the cell for T timesteps, and then reinitialize the histories
+        """
+        self.grow(T)
+        self.init_hists()
         return
 
     def step(self):
