@@ -27,18 +27,22 @@ exp_id = 0
 
 for t, d, e, k in itertools.product(transition_vec, delta_vec, epsilon_vec, k_trans_vec):
 
-    # update the params
-    params_crt = params.copy()
-    params_crt["transition"] = t
-    params_crt["delta"] = d
-    params_crt["epsilon"] = e
-    params_crt["k_trans"] = k
+    try: 
+        # update the params
+        params_crt = params.copy()
+        params_crt["transition"] = t
+        params_crt["delta"] = d
+        params_crt["epsilon"] = e
+        params_crt["k_trans"] = k
 
-    cell = cell_models.cell(params=params_crt)
-    cell.burn_in(T_burn)
-    cell.grow(T)
-    _, stats = analysis.get_phase_durations(cell)
-    slopes = analysis.compute_slopes(stats)
+        cell = cell_models.cell(params=params_crt)
+        cell.burn_in(T_burn)
+        cell.grow(T)
+        _, stats = analysis.get_phase_durations(cell)
+        slopes = analysis.compute_slopes(stats)
+
+    except:
+        continue
 
     for p in params_crt:
         df_exp.loc[exp_id, p] = params_crt[p]
