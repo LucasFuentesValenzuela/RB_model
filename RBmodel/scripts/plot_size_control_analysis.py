@@ -1,12 +1,17 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 import os
+from RBmodel import plot_utils
+import matplotlib.pyplot as plt
 
 EXP_DIR = "/Users/lucasfuentes/RB_model/data/size_control"
 
-
-def plot_size_control(df_exp, save_dir):
-    slopes_to_plot = ["slopes_G1_growth", "slopes_G1_length", "slopes_G1_delta"]
+def plot_size_control_slope_analysis(df_exp, save_dir):
+    """
+    Plot the results from `size_control_analysis.py`
+    
+    For each type of G1/S transition threshold, we plot one figure where we summarize all the slopes
+    """
+    slopes_to_plot = ["slopes_G1_growth", "slopes_G1_length", "slopes_G1_delta", "CV_M_birth"]
     
     for transition in ["size", "RBc"]:
         
@@ -51,4 +56,4 @@ def plot_size_control(df_exp, save_dir):
 
 df_exp = pd.read_csv(os.path.join(EXP_DIR, "results.csv"), index_col = 0)
 
-plot_size_control(df_exp, "/Users/lucasfuentes/RB_model/figs")
+plot_size_control_slope_analysis(df_exp, "/Users/lucasfuentes/RB_model/figs")

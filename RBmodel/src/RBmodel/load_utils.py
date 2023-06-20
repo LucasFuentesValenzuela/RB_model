@@ -2,6 +2,7 @@ import os
 from tkinter import W
 import pandas as pd
 import numpy as np
+import pickle
 
 
 def load_datasets():
@@ -185,3 +186,7 @@ def convert_data(df, dw=3):
     df_params["G2_length"] = df_params["Cycle_length"] - df_params["G1_length"]
 
     return df_params
+
+def load_size_control_analysis_results(fnm):
+    with open(fnm, "rb") as input_file:
+        return pickle.load(input_file)

@@ -335,6 +335,7 @@ class cell(object):
         """
         if (self.transition == "RBc") and (self.phase == "G1") and (self.cycle_nb < self.params['max_cycles']):
 
+            # TODO: here the transition probability might not increase linearly with size. It increases with decreasing [RB]
             transition_probability = np.maximum(
                 self.transition_th - self.RB_c(), 0) * self.params["k_trans"] * self.params["dt"]
 

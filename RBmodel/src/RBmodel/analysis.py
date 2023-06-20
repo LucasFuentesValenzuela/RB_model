@@ -104,6 +104,8 @@ def get_phase_durations(cell):
     ----------
     cell: cell_models.cell
         a cell object with a given history
+
+    TODO: i changed growth to mass, because much easier to deal with than mass ratios. 
     """
 
     phase_vec = np.array(cell.phase_hist) == "G1"
@@ -141,7 +143,7 @@ def get_phase_durations(cell):
             if phase_vec[k] == 1:  # G1
                 phase_duration[k:k +
                             next_switch] = np.linspace(-next_switch+1, 0, next_switch)
-                G1_growth.append(cell.M_hist[k+next_switch-1]/cell.M_hist[k])
+                G1_growth.append(cell.M_hist[k+next_switch-1])
                 G1_length.append(next_switch*cell.dt)
                 G1_mean_RB.append(np.mean(cell.RB_hist[k:k+next_switch]))
                 M_births.append(cell.M_hist[k])
@@ -153,7 +155,7 @@ def get_phase_durations(cell):
             elif phase_vec[k] == 0:  # G2
                 phase_duration[k:k +
                             next_switch] = np.linspace(0, next_switch-1, next_switch)
-                G2_growth.append(cell.M_hist[k+next_switch-1]/cell.M_hist[k])
+                G2_growth.append(cell.M_hist[k+next_switch-1])
                 G2_length.append(next_switch*cell.dt)
                 G2_Delta_RB.append(cell.RB_hist[k+next_switch-1] - cell.RB_hist[k])
 
@@ -164,14 +166,17 @@ def get_phase_durations(cell):
             if phase_vec[k] == 1: # G1, we are good because we have not added the elements yet
                 pass
             elif phase_vec[k] == 0:
-                M_births.pop(-1)
-                G1_growth.pop(-1)
-                G1_length.pop(-1)
-                G1_mean_RB.pop(-1)
-                RB_birth.pop(-1)
-                RB_division.pop(-1)
-                RBc_birth.pop(-1)
-                RBc_division.pop(-1)
+                try:
+                    M_births.pop(-1)
+                    G1_growth.pop(-1)
+                    G1_length.pop(-1)
+                    G1_mean_RB.pop(-1)
+                    RB_birth.pop(-1)
+                    RB_division.pop(-1)
+                    RBc_birth.pop(-1)
+                    RBc_division.pop(-1)
+                except:
+                    print("There have not been sufficient cycles.")
 
             break
 
@@ -183,12 +188,13 @@ def get_phase_durations(cell):
 
     stats = {
         'birth': M_births,
+        'CV_M_birth': np.std(M_births)/np.mean(M_births),
         'growth': (G1_growth, G2_growth),
         'length': (G1_length, G2_length),
         'RB': (G1_mean_RB, G2_Delta_RB),
         'RB_G1': (RB_birth, RB_division),
         'RBc_G1': (RBc_birth, RBc_division),
-        'delta': (_compute_delta(M_births, G1_growth),  _compute_delta(M_births, G2_growth))
+        'delta': (np.array(G1_growth) - np.array(M_births),  np.array(G2_growth) - np.array(M_births))
     }
 
     return phase_duration * cell.dt, stats
@@ -225,7 +231,7 @@ def compute_slopes(stats):
     
     for key in stats:
         
-        if key == "birth":
+        if key == "birth" or key == "CV_M_birth":
             continue
             
         for (k, ph) in enumerate(ph_nm):
